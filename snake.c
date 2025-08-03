@@ -11,7 +11,7 @@ typedef struct node
     struct node *next;
 } node;
 
-static const int GRID_SIZE = 25;
+#define GRID_SIZE 25
 
 bool GRID[GRID_SIZE][GRID_SIZE];
 
