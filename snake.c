@@ -1,5 +1,6 @@
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 typedef struct node
 {
@@ -10,7 +11,7 @@ typedef struct node
     struct node *next;
 } node;
 
-const int GRID_SIZE = 25;
+static const int GRID_SIZE = 25;
 
 bool GRID[GRID_SIZE][GRID_SIZE];
 
