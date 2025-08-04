@@ -23,6 +23,7 @@ void update_grid(node *head);
 void print_grid(void);
 void point_head(char arrow, node *head);
 void move_head(node *head);
+void crash(void);
 
 int main(void)
 {
@@ -34,7 +35,7 @@ int main(void)
     }
     head->x = COLUMNS / 2;
     head->y = ROWS / 2;
-    head->axis = true;
+    head->direction = true;
     head->axis = true;
     head->next = NULL;
 
@@ -43,27 +44,35 @@ int main(void)
     {
         // Default grid setup
         default_grid();
-        // Updete grip with snake positions
+        // Updete grid with snake positions
         update_grid(head);
         // Print grid and snake
         print_grid();
 
+        // Prompt user for valid key input
         char cursor;
-        do
+        do 
         {
-            printf("(Up: R | Down: C | ->: F | <-: D) : ");
-            scanf("%c", &cursor);
+            printf("(Up: R | Down: C | <-: D | ->: F): ");
+            scanf(" %c", &cursor);
             cursor = toupper(cursor);
         }
         while (cursor != 'R' && cursor != 'C' && cursor != 'F' && cursor != 'D');
 
         point_head(cursor, head);
         move_head(head);
+
+        if (head->x < 0 || head->x >= COLUMNS || head->y < 0 || head->y >= ROWS)
+        {
+            crash();
+            break;
+        }
         i++;
     }
 
     return 0;
 }
+
 void default_grid(void)
 {
     for (int i = 0; i < ROWS; i++)
@@ -92,7 +101,7 @@ void print_grid(void)
         {
             if (GRID[i][j] == true)
             {
-                printf("o");
+                printf("O");
             }
             else
             {
@@ -105,7 +114,7 @@ void print_grid(void)
 
 void point_head(char arrow, node *head)
 {
-    if (arrow == 'R' || arrow == 'F')
+    if (arrow == 'C' || arrow == 'F')
     {
         head->direction = true;
     }
@@ -122,6 +131,7 @@ void point_head(char arrow, node *head)
     {
         head->axis = false;
     }
+    return;
 }
 
 void move_head(node *head)
@@ -148,4 +158,10 @@ void move_head(node *head)
             head->x--;
         }
     }
+    return;
+}
+
+void crash(void)
+{
+    printf("Game over!!\n");
 }
