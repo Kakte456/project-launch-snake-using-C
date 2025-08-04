@@ -20,7 +20,7 @@ bool GRID[ROWS][COLUMNS];
 // Prototypes
 void default_grid(void);
 void update_grid(node *head);
-void print_grid(void);
+bool print_grid(void);
 void point_head(char arrow, node *head);
 void move_head(node *head);
 void crash(void);
@@ -47,7 +47,11 @@ int main(void)
         // Updete grid with snake positions
         update_grid(head);
         // Print grid and snake
-        print_grid();
+        if (!print_grid())
+        {
+            free(head);
+            return 1;
+        }
 
         // Prompt user for valid key input
         char cursor;
@@ -70,6 +74,7 @@ int main(void)
         i++;
     }
 
+    free(head);
     return 0;
 }
 
@@ -92,24 +97,34 @@ void update_grid(node *head)
     return;
 }
 
-void print_grid(void)
+bool print_grid(void)
 {
+    FILE *screen = fopen("screen.txt", "w");
+    if (screen == NULL)
+    {
+        // Error protocols
+        return false;
+    }
+
     for (int i = 0; i < ROWS; i++)
     {
-        printf("|");
+        fprintf(screen, "|");
         for (int j = 0; j < COLUMNS; j++)
         {
             if (GRID[i][j] == true)
             {
-                printf("O");
+                fprintf(screen, "O");
             }
             else
             {
-                printf(" ");
+                fprintf(screen, " ");
             }
         }
-        printf("|\n");
+        fprintf(screen, "|\n");
     }
+
+    fclose(screen);
+    return true;
 }
 
 void point_head(char arrow, node *head)
