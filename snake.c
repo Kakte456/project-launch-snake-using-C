@@ -10,7 +10,6 @@ typedef struct node
     int y;
     bool axis;
     bool direction;
-    struct node *next;
     struct node *prev;
 } node;
 
@@ -18,66 +17,68 @@ typedef struct
 {
     bool snake;
     bool apple;
-} TILE;
+} tile;
 
 #define COLUMNS 25
 #define ROWS 15
 
-TILE GRID[ROWS][COLUMNS];
+tile GRID[ROWS][COLUMNS];
 
 // Prototypes
 void spawn_apple(void);
 void default_grid(void);
-void update_grid(node *head);
+void update_grid(node *tail);
 bool print_grid(void);
 void point_head(char arrow, node *head);
 void move_snake(node *tail);
 void move_node(node *n);
 void lead_node(node *n);
 void crash(void);
-bool intersect(node *head);
+bool intersect(node *head, node *tail);
 bool eat(node *head);
 bool sizeup(node **tail);
-void lfree(node *head);
+void lfree(node *tail);
 
 int main(void)
 {
     // Seed for random coordinate GENERATION
     srandom(time(NULL));
 
-    // Default head setup
+    // Default head node setup
     node *head = malloc(sizeof(node));
     if (head == NULL)
     {
         return 1;
     }
+    // Initially Point tail towards head node
     node *tail = head;
     int size = 1;
 
     head->x = COLUMNS / 2;
     head->y = ROWS / 2;
     head->direction = true;
-    head->axis = true;
-    head->next = NULL;
+    head->axis = false;
     head->prev = NULL;
 
+    // Prepare to spawn first apple
     bool ate = true;
 
+    // Loop game stages
     while (true)
     {
         // Default grid setup for snake positions
         default_grid();
         // Updete grid with snake positions
-        update_grid(head);
+        update_grid(tail);
         // Spawn an apple if no apple left on grid
         if (ate)
         {
             spawn_apple();
         }
-        // Print grid with snake and aapple positions
+        // Print grid with snake and apple positions
         if (!print_grid())
         {
-            lfree(head);
+            lfree(tail);
             return 1;
         }
 
@@ -99,7 +100,7 @@ int main(void)
             crash();
             break;
         }
-        else if (intersect(head))
+        else if (intersect(head, tail))
         {
             crash();
             break;
@@ -122,7 +123,7 @@ int main(void)
         }
     }
 
-    lfree(head);
+    lfree(tail);
     return 0;
 }
 
@@ -151,9 +152,9 @@ void default_grid(void)
     }
 }
 
-void update_grid(node *head)
+void update_grid(node *tail)
 {
-    for (node *ptr = head; ptr != NULL; ptr = ptr->next)
+    for (node *ptr = tail; ptr != NULL; ptr = ptr->prev)
     {
         GRID[ptr->y][ptr->x].snake = true;
     }
@@ -267,14 +268,9 @@ void crash(void)
     printf("Game over!!\n");
 }
 
-bool intersect(node *head)
+bool intersect(node *head, node *tail)
 {
-    if (head->next == NULL)
-    {
-        return false;
-    }
-
-    for (node *ptr = head->next; ptr != NULL; ptr = ptr->next)
+    for (node *ptr = tail; ptr != head; ptr = ptr->prev)
     {
         if (head->x == ptr->x && head->y == ptr->y)
         {
@@ -307,7 +303,6 @@ bool sizeup(node **tail)
         return false;
     }
 
-    n->next = NULL;
     n->prev = NULL;
     if (t->axis)
     {
@@ -336,22 +331,20 @@ bool sizeup(node **tail)
     n->axis = t->axis;
     n->direction = t->direction;
 
-    n->next = t->next;
-    t->next = n;
     n->prev = t;
-
     *tail = n;
+
     return true;
 }
 
-void lfree(node *head)
+void lfree(node *tail)
 {
-    if (head == NULL)
+    if (tail == NULL)
     {
         return;
     }
 
-    lfree(head->next);
-    free(head);
+    lfree(tail->prev);
+    free(tail);
     return;
 }
