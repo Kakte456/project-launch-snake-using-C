@@ -28,7 +28,8 @@ tile GRID[ROWS][COLUMNS];
 void spawn_apple(void);
 void default_grid(void);
 void update_grid(node *tail);
-bool print_grid(void);
+bool print_grid(int score);
+void layout(FILE *screen);
 void point_head(char arrow, node *head);
 void move_snake(node *tail);
 void move_node(node *n);
@@ -52,7 +53,6 @@ int main(void)
     }
     // Initially Point tail towards head node
     node *tail = head;
-    int size = 1;
 
     head->x = COLUMNS / 2;
     head->y = ROWS / 2;
@@ -62,6 +62,7 @@ int main(void)
 
     // Prepare to spawn first apple
     bool ate = true;
+    int size = 1;
 
     // Loop game stages
     while (true)
@@ -76,13 +77,13 @@ int main(void)
             spawn_apple();
         }
         // Print grid with snake and apple positions
-        if (!print_grid())
+        if (!print_grid(size - 1))
         {
             lfree(tail);
             return 1;
         }
 
-        // Prompt user for valid key input
+        // Prompt user for valid key input for cursor
         char cursor;
         do 
         {
@@ -92,19 +93,23 @@ int main(void)
         }
         while (cursor != 'R' && cursor != 'C' && cursor != 'F' && cursor != 'D');
 
+        // Change head direction using cursor input
         point_head(cursor, head);
         move_snake(tail);
 
+        // Crash if head hits boundary
         if (head->x < 0 || head->x >= COLUMNS || head->y < 0 || head->y >= ROWS)
         {
             crash();
             break;
         }
+        // Crash if head hits snake body
         else if (intersect(head, tail))
         {
             crash();
             break;
         }
+        // Upgrade snake if head eats apple
         else if (eat(head))
         {
             GRID[head->y][head->x].apple = false;
@@ -161,7 +166,7 @@ void update_grid(node *tail)
     return;
 }
 
-bool print_grid(void)
+bool print_grid(int score)
 {
     FILE *screen = fopen("screen.txt", "w");
     if (screen == NULL)
@@ -170,9 +175,10 @@ bool print_grid(void)
         return false;
     }
 
+    layout(screen);
     for (int i = 0; i < ROWS; i++)
     {
-        fprintf(screen, "|");
+        fprintf(screen, "#");
         for (int j = 0; j < COLUMNS; j++)
         {
             if (GRID[i][j].snake)
@@ -188,11 +194,23 @@ bool print_grid(void)
                 fprintf(screen, " ");
             }
         }
-        fprintf(screen, "|\n");
+        fprintf(screen, "#\n");
     }
+    layout(screen);
+
+    fprintf(screen, "\nSCORE : %i\n", score);
 
     fclose(screen);
     return true;
+}
+
+void layout(FILE *screen)
+{
+    for (int i = 0; i < COLUMNS + 2; i++)
+    {
+        fprintf(screen, "#");
+    }
+    fprintf(screen, "\n");
 }
 
 void point_head(char arrow, node *head)
