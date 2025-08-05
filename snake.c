@@ -11,9 +11,10 @@ typedef struct node
     bool axis;
     bool direction;
     struct node *next;
+    struct node *prev;
 } node;
 
-typedef struct tile
+typedef struct
 {
     bool snake;
     bool apple;
@@ -30,7 +31,9 @@ void default_grid(void);
 void update_grid(node *head);
 bool print_grid(void);
 void point_head(char arrow, node *head);
-void move_head(node *head);
+void move_snake(node *tail);
+void move_node(node *n);
+void lead_node(node *n);
 void crash(void);
 bool intersect(node *head);
 bool eat(node *head);
@@ -48,14 +51,15 @@ int main(void)
     {
         return 1;
     }
+    node *tail = head;
+    int size = 1;
 
     head->x = COLUMNS / 2;
     head->y = ROWS / 2;
     head->direction = true;
     head->axis = true;
     head->next = NULL;
-
-    node *tail = head;
+    head->prev = NULL;
 
     bool ate = true;
 
@@ -88,7 +92,7 @@ int main(void)
         while (cursor != 'R' && cursor != 'C' && cursor != 'F' && cursor != 'D');
 
         point_head(cursor, head);
-        move_head(head);
+        move_snake(tail);
 
         if (head->x < 0 || head->x >= COLUMNS || head->y < 0 || head->y >= ROWS)
         {
@@ -110,6 +114,7 @@ int main(void)
                 lfree(head);
                 return 1;
             }
+            size++;
         }
         else
         {
@@ -145,6 +150,7 @@ void default_grid(void)
         }
     }
 }
+
 void update_grid(node *head)
 {
     for (node *ptr = head; ptr != NULL; ptr = ptr->next)
@@ -210,31 +216,50 @@ void point_head(char arrow, node *head)
     return;
 }
 
-void move_head(node *head)
+void move_snake(node *tail)
 {
-    if (head->axis == true)
+    for (node *ptr = tail; ptr != NULL; ptr = ptr->prev)
     {
-        if (head->direction == true)
+        move_node(ptr);
+        if (ptr->prev != NULL)
         {
-            head->y++;
+            lead_node(ptr);
+        }
+    }
+    return;
+}
+
+void move_node(node *n)
+{
+    if (n->axis == true)
+    {
+        if (n->direction == true)
+        {
+            n->y++;
         }
         else
         {
-            head->y--;
+            n->y--;
         }
     }
     else
     {
-        if (head->direction == true)
+        if (n->direction == true)
         {
-            head->x++;
+            n->x++;
         }
         else
         {
-            head->x--;
+            n->x--;
         }
     }
     return;
+}
+
+void lead_node(node *n)
+{
+    n->axis = n->prev->axis;
+    n->direction = n->prev->direction;
 }
 
 void crash(void)
@@ -283,15 +308,16 @@ bool sizeup(node **tail)
     }
 
     n->next = NULL;
+    n->prev = NULL;
     if (t->axis)
     {
         if (t->direction)
         {
-            n->y = t->y--;
+            n->y = t->y - 1;
         }
         else
         {
-            n->y = t->y++;
+            n->y = t->y + 1;
         }
         n->x = t->x;
     }
@@ -299,17 +325,20 @@ bool sizeup(node **tail)
     {
         if (t->direction)
         {
-            n->x = t->x--;
+            n->x = t->x - 1;
         }
         else
         {
-            n->x = t->x++;
+            n->x = t->x + 1;
         }
         n->y = t->y;
     }
+    n->axis = t->axis;
+    n->direction = t->direction;
 
     n->next = t->next;
     t->next = n;
+    n->prev = t;
 
     *tail = n;
     return true;
