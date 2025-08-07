@@ -4,24 +4,31 @@
 #include <stdlib.h>
 #include <time.h>
 
+// Data struct: Node that belong to snake linked list
 typedef struct node
 {
+    // 2 integers to represent position on grid
     int x;
     int y;
+    // 2 bits to represent to respresent Direction
     bool axis;
     bool direction;
+    // 1 pointer towards previous node / segment
     struct node *prev;
 } node;
 
+// Data type: Tile which marks the snake / apple positions
 typedef struct
 {
     bool snake;
     bool apple;
 } tile;
 
+// Constant: Grid dimensions
 #define COLUMNS 25
 #define ROWS 15
 
+// Global variable: 2D Grid of tiles
 tile GRID[ROWS][COLUMNS];
 
 // Prototypes
@@ -64,7 +71,7 @@ int main(void)
     bool ate = true;
     int size = 1;
 
-    // Loop game stages
+    // Loop game
     while (true)
     {
         // Default grid setup for snake positions
@@ -95,6 +102,7 @@ int main(void)
 
         // Change head direction using cursor input
         point_head(cursor, head);
+        // Move snake nodes towards their directions and updating directions
         move_snake(tail);
 
         // Crash if head hits boundary
@@ -122,16 +130,19 @@ int main(void)
             }
             size++;
         }
+        // Next turn
         else
         {
             ate = false;
         }
     }
 
+    // Recursively free the snake list
     lfree(tail);
     return 0;
 }
 
+// Spawn apple in random position on grid
 void spawn_apple(void)
 {
     int x, y;
@@ -140,12 +151,13 @@ void spawn_apple(void)
         y = (int) random() % ROWS;
         x = (int) random() % COLUMNS;
     }
-    while (GRID[y][x].snake);
+    while (GRID[y][x].snake); // Avoid snake positions
 
     GRID[y][x].apple = true;
     return;
 }
 
+// Reset snake positions on grid
 void default_grid(void)
 {
     for (int i = 0; i < ROWS; i++)
@@ -157,8 +169,10 @@ void default_grid(void)
     }
 }
 
+// Update grid with new snake positions
 void update_grid(node *tail)
 {
+    // Iterate through each node on snake link list
     for (node *ptr = tail; ptr != NULL; ptr = ptr->prev)
     {
         GRID[ptr->y][ptr->x].snake = true;
@@ -166,6 +180,7 @@ void update_grid(node *tail)
     return;
 }
 
+// Print the grid and layout on screen
 bool print_grid(int score)
 {
     FILE *screen = fopen("screen.txt", "w");
@@ -175,7 +190,9 @@ bool print_grid(int score)
         return false;
     }
 
+    // Top layout
     layout(screen);
+    // Print grid row by row
     for (int i = 0; i < ROWS; i++)
     {
         fprintf(screen, "#");
@@ -183,11 +200,11 @@ bool print_grid(int score)
         {
             if (GRID[i][j].snake)
             {
-                fprintf(screen, "+");
+                fprintf(screen, "+"); // Snake: +
             }
             else if (GRID[i][j].apple)
             {
-                fprintf(screen, "O");
+                fprintf(screen, "O"); // Apple: O
             }
             else
             {
@@ -196,14 +213,17 @@ bool print_grid(int score)
         }
         fprintf(screen, "#\n");
     }
+    // Bottom layout
     layout(screen);
 
+    // Print the score to screen
     fprintf(screen, "\nSCORE : %i\n", score);
 
     fclose(screen);
     return true;
 }
 
+// Brick (#) Boundaries
 void layout(FILE *screen)
 {
     for (int i = 0; i < COLUMNS + 2; i++)
@@ -213,6 +233,9 @@ void layout(FILE *screen)
     fprintf(screen, "\n");
 }
 
+// Use cursor input to change direction of head
+// Vertical axis: true | Horizontal axis: false
+// Right/Down: true | Left/Up: false
 void point_head(char arrow, node *head)
 {
     if (arrow == 'C' || arrow == 'F')
@@ -235,11 +258,15 @@ void point_head(char arrow, node *head)
     return;
 }
 
+// Move snake body by changing coordinates of each snake node
 void move_snake(node *tail)
 {
+    // Iterate node by node
     for (node *ptr = tail; ptr != NULL; ptr = ptr->prev)
     {
+        // Move node in its direction
         move_node(ptr);
+        // Inherit direction form previous node
         if (ptr->prev != NULL)
         {
             lead_node(ptr);
@@ -248,6 +275,7 @@ void move_snake(node *tail)
     return;
 }
 
+// Move node in its given direction by translating the direction bits
 void move_node(node *n)
 {
     if (n->axis == true)
@@ -275,17 +303,20 @@ void move_node(node *n)
     return;
 }
 
+// Inherit directions from prev node
 void lead_node(node *n)
 {
     n->axis = n->prev->axis;
     n->direction = n->prev->direction;
 }
 
+// Crash statement protocols
 void crash(void)
 {
     printf("Game over!!\n");
 }
 
+// Check if head hits snake body
 bool intersect(node *head, node *tail)
 {
     for (node *ptr = tail; ptr != head; ptr = ptr->prev)
@@ -299,6 +330,7 @@ bool intersect(node *head, node *tail)
     return false;
 }
 
+// Check if head hits apple
 bool eat(node *head)
 {
     if (GRID[head->y][head->x].apple)
@@ -311,16 +343,19 @@ bool eat(node *head)
     }
 }
 
+// Upgarde snake list by appending node to the tail
 bool sizeup(node **tail)
 {
     node *t = *tail;
 
+    // Allocate a new node
     node *n = malloc(sizeof(node));
     if (n == NULL)
     {
         return false;
     }
 
+    // On grid, Place new node behind tail node
     n->prev = NULL;
     if (t->axis)
     {
@@ -346,15 +381,18 @@ bool sizeup(node **tail)
         }
         n->y = t->y;
     }
+    // Inherit directions form tail node
     n->axis = t->axis;
     n->direction = t->direction;
 
+    // Append new node to tail without orphaning
     n->prev = t;
     *tail = n;
 
     return true;
 }
 
+// Recursively free snake link list
 void lfree(node *tail)
 {
     if (tail == NULL)
