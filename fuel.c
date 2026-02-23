@@ -17,25 +17,32 @@ typedef struct node
     struct node *prev;
 } node;
 
-// Data type: Tile which marks the snake / apple positions
+// Data type: Tile which marks the snake / apple / trap positions & ages
 typedef struct
 {
     bool snake;
     bool apple;
+    bool trap;
+    int trap_age;
+    int apple_age; 
 } tile;
 
 // Constant: Grid dimensions
 #define COLUMNS 25
 #define ROWS 15
 
+// Constant: Trap life span
+#define TRAP_LIFE 125
+
 // Global variable: 2D Grid of tiles
 tile GRID[ROWS][COLUMNS];
 
 // Prototypes
 void spawn_apple(void);
+void spawn_trap(void);
 void default_grid(void);
 void update_grid(node *tail);
-bool print_grid(int score);
+bool print_grid(int score, int moves);
 void layout(FILE *screen);
 char backwards(char cursor);
 void point_head(char arrow, node *head);
@@ -45,7 +52,11 @@ void lead_node(node *n);
 void crash(void);
 bool intersect(node *head, node *tail);
 bool eat(node *head);
+bool hit(node *head);
 bool sizeup(node **tail);
+void age(void);
+int recharge(int age);
+int reward(int age);
 void lfree(node *tail);
 
 int main(void)
@@ -72,22 +83,30 @@ int main(void)
     bool ate = true;
     // Snake initial size
     int size = 1;
+    // Initial score
+    int score = 0;
+    // Initial moves
+    int moves = 50;
     char inertia = 'X'; // Initial inertia to the invariant direction
 
+    spawn_apple();
+
     // Loop game
-    while (true)
+    while (moves > 0)
     {
         // Default grid setup for snake positions
         default_grid();
         // Updete grid with snake positions
         update_grid(tail);
-        // Spawn an apple if no apple left on grid
+        // Spawn an apple and new trap if no apple left on grid
         if (ate)
         {
+            spawn_trap();
             spawn_apple();
         }
-        // Print grid with snake and apple positions
-        if (!print_grid(size - 1))
+
+        // Print grid with snake, trap and apple positions
+        if (!print_grid(score, moves))
         {
             lfree(tail);
             return 1;
@@ -121,10 +140,19 @@ int main(void)
             crash();
             break;
         }
+        // Crash if head hits trap
+        else if (hit(head))
+        {
+            crash();
+            break;
+        }
         // Upgrade snake if head eats apple
         else if (eat(head))
         {
+            moves += recharge(GRID[head->y][head->x].apple_age);
+            score += reward(GRID[head->y][head->x].apple_age);
             GRID[head->y][head->x].apple = false;
+            GRID[head->y][head->x].apple_age = 0;
             ate = true;
 
             if (!sizeup(&tail))
@@ -138,8 +166,14 @@ int main(void)
         else
         {
             ate = false;
+            moves--;
         }
+
+        // Age apples and traps on grid
+        age();
     }
+
+    printf("GAME OVER!\n");
 
     // Recursively free the snake list
     lfree(tail);
@@ -155,9 +189,26 @@ void spawn_apple(void)
         y = (int) random() % ROWS;
         x = (int) random() % COLUMNS;
     }
-    while (GRID[y][x].snake); // Avoid snake positions
+    while (GRID[y][x].snake || GRID[y][x].apple || GRID[y][x].trap); // Avoid snake, apple and trap positions
 
     GRID[y][x].apple = true;
+    GRID[y][x].apple_age = -1; // Set apple age to -1
+    return;
+}
+
+// Spawn trap in random position on grid
+void spawn_trap(void)
+{
+    int x, y;
+    do
+    {
+        y = (int) random() % ROWS;
+        x = (int) random() % COLUMNS;
+    }
+    while (GRID[y][x].snake || GRID[y][x].apple || GRID[y][x].trap); // Avoid snake, apple and trap positions
+
+    GRID[y][x].trap = true;
+    GRID[y][x].trap_age = -1; // Set trap age to -1
     return;
 }
 
@@ -185,7 +236,7 @@ void update_grid(node *tail)
 }
 
 // Print the grid and layout on screen
-bool print_grid(int score)
+bool print_grid(int score, int moves)
 {
     FILE *screen = fopen("screen.txt", "w");
     if (screen == NULL)
@@ -204,11 +255,15 @@ bool print_grid(int score)
         {
             if (GRID[i][j].snake)
             {
-                fprintf(screen, "+"); // Snake: +
+                fprintf(screen, "O"); // Snake: O
             }
             else if (GRID[i][j].apple)
             {
-                fprintf(screen, "O"); // Apple: O
+                fprintf(screen, "A"); // Apple: A
+            }
+            else if (GRID[i][j].trap)
+            {
+                fprintf(screen, "X"); // Trap: X
             }
             else
             {
@@ -222,6 +277,7 @@ bool print_grid(int score)
 
     // Print the score to screen
     fprintf(screen, "\nSCORE : %i\n", score);
+    fprintf(screen, "MOVES LEFT : %i\n", moves);
 
     fclose(screen);
     return true;
@@ -237,6 +293,7 @@ void layout(FILE *screen)
     fprintf(screen, "\n");
 }
 
+// Get opposite direction of cursor input
 char backwards(char cursor)
 {
     if (cursor == 'R')
@@ -367,6 +424,19 @@ bool eat(node *head)
     }
 }
 
+// Check if head hits trap
+bool hit(node *head)
+{
+    if (GRID[head->y][head->x].trap)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
 // Upgarde snake list by appending node to the tail
 bool sizeup(node **tail)
 {
@@ -414,6 +484,59 @@ bool sizeup(node **tail)
     *tail = n;
 
     return true;
+}
+
+// Age apples and traps on grid
+void age(void)
+{
+    for (int i = 0; i < ROWS; i++)
+    {
+        for (int j = 0; j < COLUMNS; j++)
+        {
+            if (GRID[i][j].apple)
+            {
+                GRID[i][j].apple_age++; // Increase apple age by 1
+            }
+            if (GRID[i][j].trap)
+            {
+                GRID[i][j].trap_age++; // Increase trap age by 1
+                // Remove trap if it exceeds life span
+                if (GRID[i][j].trap_age >= TRAP_LIFE)
+                {
+                    GRID[i][j].trap = false;
+                    GRID[i][j].trap_age = 0;
+                }
+            }
+        }
+    }
+}
+
+// Recharge moves based on apple age
+int recharge(int age)
+{
+    int moves = 21 - (age * 0.70);
+    if (moves < 8)
+    {
+        return 8;
+    }
+    else
+    {
+        return moves;
+    }
+}
+
+// Reward score based on apple age
+int reward(int age)
+{
+    int points = age * 0.5;
+    if (points > 10)
+    {
+         return 10;
+    }
+    else
+    {
+         return points;
+    }
 }
 
 // Recursively free snake link list
