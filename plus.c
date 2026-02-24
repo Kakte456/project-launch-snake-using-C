@@ -17,11 +17,12 @@ typedef struct node
     struct node *prev;
 } node;
 
-// Data type: Tile which marks the snake / apple positions
+// Data type: Tile which marks the snake / apple / trap positions
 typedef struct
 {
     bool snake;
     bool apple;
+    bool trap;
 } tile;
 
 // Constant: Grid dimensions
@@ -33,6 +34,7 @@ tile GRID[ROWS][COLUMNS];
 
 // Prototypes
 void spawn_apple(void);
+void spawn_trap(void);
 void default_grid(void);
 void update_grid(node *tail);
 bool print_grid(int score);
@@ -45,6 +47,7 @@ void lead_node(node *n);
 void crash(void);
 bool intersect(node *head, node *tail);
 bool eat(node *head);
+bool hit(node *head);
 bool sizeup(node **tail);
 void lfree(node *tail);
 
@@ -81,12 +84,14 @@ int main(void)
         default_grid();
         // Updete grid with snake positions
         update_grid(tail);
-        // Spawn an apple if no apple left on grid
+        // Spawn an apple and new trap if no apple left on grid
         if (ate)
         {
+            spawn_trap();
             spawn_apple();
         }
-        // Print grid with snake and apple positions
+
+        // Print grid with snake, trap and apple positions
         if (!print_grid(size - 1))
         {
             lfree(tail);
@@ -117,6 +122,17 @@ int main(void)
         }
         // Crash if head hits snake body
         else if (intersect(head, tail))
+        {
+            crash();
+            break;
+        }
+        // Crash if head hits trap
+        else if (hit(head))
+        {
+            crash();
+            break;
+        }
+        else if (hit(head))
         {
             crash();
             break;
@@ -155,9 +171,23 @@ void spawn_apple(void)
         y = (int) random() % ROWS;
         x = (int) random() % COLUMNS;
     }
-    while (GRID[y][x].snake); // Avoid snake positions
+    while (GRID[y][x].snake || GRID[y][x].trap); // Avoid snake and trap positions
 
     GRID[y][x].apple = true;
+    return;
+}
+
+void spawn_trap(void)
+{
+    int x, y;
+    do
+    {
+        y = (int) random() % ROWS;
+        x = (int) random() % COLUMNS;
+    }
+    while (GRID[y][x].snake || GRID[y][x].apple || GRID[y][x].trap); // Avoid snake, apple and trap positions
+
+    GRID[y][x].trap = true;
     return;
 }
 
@@ -204,11 +234,15 @@ bool print_grid(int score)
         {
             if (GRID[i][j].snake)
             {
-                fprintf(screen, "+"); // Snake: +
+                fprintf(screen, "O"); // Snake: O
             }
             else if (GRID[i][j].apple)
             {
-                fprintf(screen, "O"); // Apple: O
+                fprintf(screen, "A"); // Apple: A
+            }
+            else if (GRID[i][j].trap)
+            {
+                fprintf(screen, "X"); // Trap: X
             }
             else
             {
@@ -358,6 +392,19 @@ bool intersect(node *head, node *tail)
 bool eat(node *head)
 {
     if (GRID[head->y][head->x].apple)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+// Check if head hits trap
+bool hit(node *head)
+{
+    if (GRID[head->y][head->x].trap)
     {
         return true;
     }
